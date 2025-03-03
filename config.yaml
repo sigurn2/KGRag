@@ -1,0 +1,14 @@
+
+# export OPENAI_API_KEY=""
+hugging_face:
+  HF_ENDPOINT=https://hf-mirror.com
+
+neo4j:
+  uri: 'neo4j+s://7bb874c8.databases.neo4j.io'
+  username: 'neo4j'
+  password: '68otZi2vUO074M-28dLjKfIqKFCHNs-4d4y-9SEpVWA'
+
+openai:
+  api_key: 'sk-jpcmcxjejmjrcgltqawqcchpaoylklcmwibvlztcovelzmid'
+  base_url: 'https://api.siliconflow.cn/v1'
+  model: 'Qwen/Qwen2.5-7B-Instruct'

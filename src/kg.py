@@ -15,14 +15,12 @@ from tenacity import (
     retry_if_exception_type,
 )
 
-from lsmrag.base import BaseGraphStorage
-from lsmrag.utils import logger
-from lsmrag.utils import read_config
+from utils import read_config,logger
 
 config = read_config()
 
 @dataclass
-class Neo4JStorage(BaseGraphStorage):
+class Neo4JStorage:
     @staticmethod
     def load_nx_graph(file_name):
         print("no preloading of graph with neo4j in production")
@@ -45,11 +43,6 @@ class Neo4JStorage(BaseGraphStorage):
             URI, auth=(USERNAME, PASSWORD)
         )
         return None
-
-    def __post_init__(self):
-        self._node_embed_algorithms = {
-            "node2vec": self._node2vec_embed,
-        }
 
     async def close(self):
         if self._driver:
@@ -314,9 +307,6 @@ class Neo4JStorage(BaseGraphStorage):
         except Exception as e:
             logger.error(f"Error during edge upsert: {str(e)}")
             raise
-
-    async def _node2vec_embed(self):
-        print("Implemented but never called.")
 
 
 async def main():
