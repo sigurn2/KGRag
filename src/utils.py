@@ -2,6 +2,8 @@ import yaml
 import logging
 import re
 from hashlib import md5
+import json
+import os
 
 logger = logging.getLogger('kgrag')
 file_path = "../config.yaml"
@@ -36,3 +38,16 @@ def safe_unicode_decode(content):
 
 def compute_mdhash_id(content, prefix: str = ""):
     return prefix + md5(content.encode()).hexdigest()
+
+
+
+def load_json(file_name):
+    if not os.path.exists(file_name):
+        return None
+    with open(file_name, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def write_json(json_obj, file_name):
+    with open(file_name, "w", encoding="utf-8") as f:
+        json.dump(json_obj, f, indent=2, ensure_ascii=False)
