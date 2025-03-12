@@ -13,7 +13,9 @@ from datetime import datetime
 from tqdm.asyncio import tqdm as tqdm_async
 import os
 from operate import chunking_by_passage
-
+from utils import load_json
+import pandas as pd
+from typing import Literal
 def always_get_an_event_loop() -> asyncio.AbstractEventLoop:
     """
     Ensure that there is always an event loop available.
@@ -44,12 +46,11 @@ class KGrag:
     llm: callable = silcon_compelete
     embedding: callable = silcon_compelete
     kv_storage = JsonKVStorage
-    
-    corpus: list[str] = field(default_factory=list)
+    # corpus: json = {}
     # graph_storage = Neo4JStorage
     # vector_storage = NanoVectorDBStorage
-     
-    
+    # dataset: type[pd.DataFrame] = field(default_factory=pd.DataFrame())
+    corpus: Literal['2wiki','hotpotqa','musique'] = '2wiki'
     
     
     def __post_init__(self):
@@ -61,48 +62,47 @@ class KGrag:
         }
         self.doc_cache = JsonKVStorage('doc', self.storage_config)
         self.chunk_cache = JsonKVStorage('chunk', self.storage_config)
-    
-    def insert(self, string_or_strings):
+        self.dataset = None
+        if self.corpus == '2wiki':
+            self.dataset = pd.read_json('/mnt/home/liangdongqi/KGRag/data/2wiki_corpus.json')
+        if self.corpus == 'hotpotqa':
+            self.dataset = pd.read_json('/mnt/home/liangdongqi/KGRag/data/hotpotqa_corpus.json')
+        if self.corpus == 'musique':
+            self.dataset = pd.read_json('/mnt/home/liangdongqi/KGRag/data/misque_corpus.json')
+        self.insert()
+        
+    def insert(self):
         loop = always_get_an_event_loop()
-        return loop.run_until_complete(self.ainsert(string_or_strings))
-    async def ainsert(self, string_or_strings):
+        return loop.run_until_complete(self.ainsert())
+    async def ainsert(self):
         try:
-            if isinstance(string_or_strings, str):
-                string_or_strings = [string_or_strings]
-            
-            new_docs = {
-                compute_mdhash_id(c.strip(), prefix='doc-'): {"content": c.strip()}
-                for c in string_or_strings
-            }
-            _add_doc_keys = await self.doc_cache.filter_keys(list(new_docs.keys()))
-            new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
-            if not len(new_docs):
-                logger.warning('all file have been processed')
-                return
-            
-            logger.info(f'[new docs] inserting {len(new_docs)} docs')
-            
+            if self.dataset is None:
+                logger.error('corpus is None')
+                return                       
             inserting_chunks = {}
-            for doc_key, doc in tqdm_async(
-                new_docs.items(), desc='Chunking documents', unit='doc'
-            ):
-                chunks = {
-                    compute_mdhash_id(dp['content'], prefix='chunk-'):
-                        {
-                            **dp,
-                            'full_doc_id': doc_key,
-                        }
-                    for dp in doc['content']
-                }
-                inserting_chunks.update(chunks)
-            _add_chunk_keys = await self.chunk_cache.filter_keys(list(inserting_chunks.keys()))
-            inserting_chunks = {k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys}
-            if not len(inserting_chunks):
-                logger.warning('all file have been processed')
-                return
-            logger.info(f'[new chunks] inserting {len(inserting_chunks)} chunks')
-            await self.chunk_cache.upsert(inserting_chunks)
-            await self.doc_cache.upsert(new_docs)
+            pass
+            
+            
+            # for doc_key, doc in tqdm_async(
+            #     new_docs.items(), desc='Chunking documents', unit='doc'
+            # ):
+            #     chunks = {
+            #         compute_mdhash_id(dp['content'], prefix='chunk-'):
+            #             {
+            #                 **dp,
+            #                 'full_doc_id': doc_key,
+            #             }
+            #         for dp in doc['content']
+            #     }
+            #     inserting_chunks.update(chunks)
+            # _add_chunk_keys = await self.chunk_cache.filter_keys(list(inserting_chunks.keys()))
+            # inserting_chunks = {k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys}
+            # if not len(inserting_chunks):
+            #     logger.warning('all file have been processed')
+            #     return
+            # logger.info(f'[new chunks] inserting {len(inserting_chunks)} chunks')
+            # await self.chunk_cache.upsert(inserting_chunks)
+            # await self.doc_cache.upsert(new_docs)
         finally:
             await self._insert_done()
             
@@ -125,9 +125,7 @@ class KGrag:
 
 if __name__ == "__main__":
     WORKING_DIR = "test"
-
+    corpus = 'musique'
     if not os.path.exists(WORKING_DIR):
         os.mkdir(WORKING_DIR)
-    rag = KGrag(working_dir=WORKING_DIR)
-    with open('/mnt/home/liangdongqi/KGRag/data/misque_corpus.json') as f:
-        rag.insert(f.read())
+    rag = KGrag(corpus = corpus, working_dir=WORKING_DIR)
