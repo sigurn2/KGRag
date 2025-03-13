@@ -6,7 +6,7 @@ import json
 import os
 
 logger = logging.getLogger('kgrag')
-file_path = "../config.yaml"
+file_path = "/mnt/home/liangdongqi/KGRag/config.yaml"
 
 
 def read_config():

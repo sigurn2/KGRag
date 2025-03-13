@@ -44,7 +44,7 @@ class KGrag:
     # config = read_config()
     working_dir: str = field(default_factory=lambda: f"./lightrag_cache_{datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}")
     llm: callable = silcon_compelete
-    embedding: callable = silcon_compelete
+    embedding: callable = siliconcloud_embedding
     kv_storage = JsonKVStorage
     # corpus: json = {}
     # graph_storage = Neo4JStorage
@@ -80,8 +80,13 @@ class KGrag:
                 logger.error('corpus is None')
                 return                       
             inserting_chunks = {}
-            pass
-            
+            for id, row in tqdm_async(self.dataset.iterrows(), desc='Chunking documents', unit='doc'):
+                title = row['title']
+                content = row['content']
+                index = compute_mdhash_id(title, prefix='doc-')
+                entities = await self.entity_extraction(content)
+                entities.sp
+                self.chunk_cache.upsert
             
             # for doc_key, doc in tqdm_async(
             #     new_docs.items(), desc='Chunking documents', unit='doc'
@@ -107,9 +112,13 @@ class KGrag:
             await self._insert_done()
             
                 
-    async def entity_extraction(self, text):
-        entities = await self.llm(prompt=text,system_prompt=prompts['entity_extraction'])
-        return entities
+    async def entity_extraction(self, text) -> list[str]:
+        config = read_config()
+        open_ai_config = config.get("openai")
+        api_key = open_ai_config.get("api_key")
+        base_url = open_ai_config.get("base_url")
+        entities = await self.llm(prompt=text,system_prompt=prompts['keywords_extraction'],api_key=api_key,base_url=base_url)
+        return entities.split(',')
     
     async def _insert_done(self):
         tasks = []
