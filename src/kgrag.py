@@ -80,13 +80,49 @@ class KGrag:
                 logger.error('corpus is None')
                 return                       
             inserting_chunks = {}
+            l = []
+            for id, row in self.dataset.iterrows():
+                title = row['title']
+                if title in l:
+                    print(l)
+                    break
+                l.append(title)
+            # for id, row in tqdm_async(self.dataset.iterrows(), desc='Chunking documents', unit='doc'):
+            #     chunks = {
+            #         compute_mdhash_id(dp['content'], prefix='chunk-'):
+            #             {
+            #                 **dp,
+            #                 'full_doc_id': id,
+            #             }
+            #         for dp in row['content']
+            #     }
+            #     inserting_chunks.update(chunks)
             for id, row in tqdm_async(self.dataset.iterrows(), desc='Chunking documents', unit='doc'):
+                chunks = {
+                    compute_mdhash_id(row['title'],prefix='chunk-'): {
+                        **row,
+                        'full_doc_id': id,
+                    }
+                }
+                inserting_chunks.update(chunks)
+            _add_chunk_keys = await self.chunk_cache.filter_keys(list(inserting_chunks.keys()))
+            if not len(_add_chunk_keys):
+                logger.warning('all file have been processed')
+                return
+                
                 title = row['title']
                 content = row['content']
                 index = compute_mdhash_id(title, prefix='doc-')
-                entities = await self.entity_extraction(content)
-                entities.sp
-                self.chunk_cache.upsert
+                inserting_chunks.update
+                entities = await self.entity_extraction(title+content)
+                chunk = {
+                    index: {
+                        'title': title,
+                        'content': content,
+                        'entities': entities
+                    }
+                }
+                self.chunk_cache.update(chunk)
             
             # for doc_key, doc in tqdm_async(
             #     new_docs.items(), desc='Chunking documents', unit='doc'
