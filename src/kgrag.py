@@ -1,5 +1,5 @@
-from dataclasses import dataclass,field
-from utils import logger,read_config, compute_mdhash_id
+from dataclasses import dataclass, field
+from utils import logger, read_config, compute_mdhash_id
 from llm import silcon_compelete, siliconcloud_embedding
 from kg import Neo4JStorage
 from vector_storage import NanoVectorDBStorage
@@ -16,6 +16,8 @@ from operate import chunking_by_passage
 from utils import load_json
 import pandas as pd
 from typing import Literal
+
+
 def always_get_an_event_loop() -> asyncio.AbstractEventLoop:
     """
     Ensure that there is always an event loop available.
@@ -39,10 +41,14 @@ def always_get_an_event_loop() -> asyncio.AbstractEventLoop:
         new_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(new_loop)
         return new_loop
+
+
 @dataclass
 class KGrag:
     # config = read_config()
-    working_dir: str = field(default_factory=lambda: f"./lightrag_cache_{datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}")
+    working_dir: str = field(
+        default_factory=lambda: f"./lightrag_cache_{datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
+    )
     llm: callable = silcon_compelete
     embedding: callable = siliconcloud_embedding
     kv_storage = JsonKVStorage
@@ -50,112 +56,73 @@ class KGrag:
     # graph_storage = Neo4JStorage
     # vector_storage = NanoVectorDBStorage
     # dataset: type[pd.DataFrame] = field(default_factory=pd.DataFrame())
-    corpus: Literal['2wiki','hotpotqa','musique'] = '2wiki'
-    
-    
+    corpus: Literal["2wiki", "hotpotqa", "musique"] = "2wiki"
+
     def __post_init__(self):
         if not os.path.exists(self.working_dir):
             logger.info(f"Creating working directory {self.working_dir}")
             os.makedirs(self.working_dir)
-        self.storage_config = {
-            'working_dir':  self.working_dir
-        }
-        self.doc_cache = JsonKVStorage('doc', self.storage_config)
-        self.chunk_cache = JsonKVStorage('chunk', self.storage_config)
+        self.storage_config = {"working_dir": self.working_dir}
+        self.doc_cache = JsonKVStorage("doc", self.storage_config)
+        self.chunk_cache = JsonKVStorage("chunk", self.storage_config)
         self.dataset = None
-        if self.corpus == '2wiki':
-            self.dataset = pd.read_json('/mnt/home/liangdongqi/KGRag/data/2wiki_corpus.json')
-        if self.corpus == 'hotpotqa':
-            self.dataset = pd.read_json('/mnt/home/liangdongqi/KGRag/data/hotpotqa_corpus.json')
-        if self.corpus == 'musique':
-            self.dataset = pd.read_json('/mnt/home/liangdongqi/KGRag/data/misque_corpus.json')
+        if self.corpus == "2wiki":
+            self.dataset = pd.read_json(
+                "/mnt/home/liangdongqi/KGRag/data/2wiki_corpus.json"
+            )
+        if self.corpus == "hotpotqa":
+            self.dataset = pd.read_json(
+                "/mnt/home/liangdongqi/KGRag/data/hotpotqa_corpus.json"
+            )
+        if self.corpus == "musique":
+            self.dataset = pd.read_json(
+                "/mnt/home/liangdongqi/KGRag/data/misque_corpus.json"
+            )
         self.insert()
-        
+
     def insert(self):
         loop = always_get_an_event_loop()
         return loop.run_until_complete(self.ainsert())
+
     async def ainsert(self):
         try:
             if self.dataset is None:
-                logger.error('corpus is None')
-                return                       
-            inserting_chunks = {}
-            l = []
-            for id, row in self.dataset.iterrows():
-                title = row['title']
-                if title in l:
-                    print(l)
-                    break
-                l.append(title)
-            # for id, row in tqdm_async(self.dataset.iterrows(), desc='Chunking documents', unit='doc'):
-            #     chunks = {
-            #         compute_mdhash_id(dp['content'], prefix='chunk-'):
-            #             {
-            #                 **dp,
-            #                 'full_doc_id': id,
-            #             }
-            #         for dp in row['content']
-            #     }
-            #     inserting_chunks.update(chunks)
-            for id, row in tqdm_async(self.dataset.iterrows(), desc='Chunking documents', unit='doc'):
-                chunks = {
-                    compute_mdhash_id(row['title'],prefix='chunk-'): {
-                        **row,
-                        'full_doc_id': id,
-                    }
-                }
-                inserting_chunks.update(chunks)
-            _add_chunk_keys = await self.chunk_cache.filter_keys(list(inserting_chunks.keys()))
-            if not len(_add_chunk_keys):
-                logger.warning('all file have been processed')
+                logger.error("corpus is None")
                 return
-                
-                title = row['title']
-                content = row['content']
-                index = compute_mdhash_id(title, prefix='doc-')
-                inserting_chunks.update
-                entities = await self.entity_extraction(title+content)
-                chunk = {
-                    index: {
-                        'title': title,
-                        'content': content,
-                        'entities': entities
-                    }
+
+            new_chunks = {
+                compute_mdhash_id(row["title"], prefix="chunk-"): {
+                    **row,
+                    "full_doc_id": id,
                 }
-                self.chunk_cache.update(chunk)
-            
-            # for doc_key, doc in tqdm_async(
-            #     new_docs.items(), desc='Chunking documents', unit='doc'
-            # ):
-            #     chunks = {
-            #         compute_mdhash_id(dp['content'], prefix='chunk-'):
-            #             {
-            #                 **dp,
-            #                 'full_doc_id': doc_key,
-            #             }
-            #         for dp in doc['content']
-            #     }
-            #     inserting_chunks.update(chunks)
-            # _add_chunk_keys = await self.chunk_cache.filter_keys(list(inserting_chunks.keys()))
-            # inserting_chunks = {k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys}
-            # if not len(inserting_chunks):
-            #     logger.warning('all file have been processed')
-            #     return
-            # logger.info(f'[new chunks] inserting {len(inserting_chunks)} chunks')
-            # await self.chunk_cache.upsert(inserting_chunks)
-            # await self.doc_cache.upsert(new_docs)
+                for id, row in self.dataset.iterrows()
+            }
+            _add_chunk_keys = await self.chunk_cache.filter_keys(
+                list(new_chunks.keys())
+            )
+            if not len(_add_chunk_keys):
+                logger.warning("all file have been processed")
+                return
+            inserting_chunks = {
+                k: v for k, v in new_chunks.items() if k in _add_chunk_keys
+            }
+            await self.chunk_cache.upsert(inserting_chunks)
         finally:
             await self._insert_done()
-            
-                
+
     async def entity_extraction(self, text) -> list[str]:
         config = read_config()
         open_ai_config = config.get("openai")
         api_key = open_ai_config.get("api_key")
         base_url = open_ai_config.get("base_url")
-        entities = await self.llm(prompt=text,system_prompt=prompts['keywords_extraction'],api_key=api_key,base_url=base_url)
-        return entities.split(',')
-    
+        entities = await self.llm(
+            prompt=text,
+            system_prompt=prompts["keywords_extraction"],
+            api_key=api_key,
+            base_url=base_url,
+        )
+        return entities.split(",")
+
     async def _insert_done(self):
         tasks = []
         for storage_inst in [
@@ -170,7 +137,7 @@ class KGrag:
 
 if __name__ == "__main__":
     WORKING_DIR = "test"
-    corpus = 'musique'
+    corpus = "musique"
     if not os.path.exists(WORKING_DIR):
         os.mkdir(WORKING_DIR)
-    rag = KGrag(corpus = corpus, working_dir=WORKING_DIR)
+    rag = KGrag(corpus=corpus, working_dir=WORKING_DIR)
