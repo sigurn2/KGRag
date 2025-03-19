@@ -1,23 +1,18 @@
-from dataclasses import dataclass, field
-from utils import logger, read_config, compute_mdhash_id
-from llm import silcon_compelete, siliconcloud_embedding
-from kg import Neo4JStorage
-from vector_storage import NanoVectorDBStorage
-from prompt import prompts
 import asyncio
-from base import StorageNameSpace
-from typing import cast
-import json
-from storage import JsonKVStorage
-from datetime import datetime
-from tqdm.asyncio import tqdm as tqdm_async
 import os
-from operate import chunking_by_passage
-from utils import load_json
-import pandas as pd
+from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Literal
+from pathlib import Path
+import pandas as pd
 
+from llm import silcon_compelete, siliconcloud_embedding
+from prompt import prompts
+from storage import JsonKVStorage
+from utils import logger, read_config, compute_mdhash_id
 
+script_path = Path(__file__).resolve()
+project_path = script_path.parent.parent
 def always_get_an_event_loop() -> asyncio.AbstractEventLoop:
     """
     Ensure that there is always an event loop available.
@@ -68,15 +63,15 @@ class KGrag:
         self.dataset = None
         if self.corpus == "2wiki":
             self.dataset = pd.read_json(
-                "/mnt/home/liangdongqi/KGRag/data/2wiki_corpus.json"
+                project_path/"data"/"2wiki_corpus.json"
             )
         if self.corpus == "hotpotqa":
             self.dataset = pd.read_json(
-                "/mnt/home/liangdongqi/KGRag/data/hotpotqa_corpus.json"
+                 project_path/"data"/"hotpotqa_corpus.json"
             )
         if self.corpus == "musique":
             self.dataset = pd.read_json(
-                "/mnt/home/liangdongqi/KGRag/data/misque_corpus.json"
+                 project_path/"data"/"misque_corpus.json"
             )
         self.insert()
 

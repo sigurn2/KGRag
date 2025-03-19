@@ -17,7 +17,6 @@ from utils import logger, read_config, safe_unicode_decode
 from functools import lru_cache
 import numpy as np
 import struct
-import aioboto3
 import aiohttp
 import base64
 

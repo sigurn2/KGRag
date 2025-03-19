@@ -10,5 +10,6 @@ TextChunkSchema = TypedDict(
 )
 
 async def extract_entities(
-    chucks: dict[str, TextChunkSchema]
+    chucks: dict[str, TextChunkSchema],
+
 )
