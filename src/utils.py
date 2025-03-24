@@ -4,9 +4,45 @@ import re
 from hashlib import md5
 import json
 import os
+from dataclasses import dataclass
+import asyncio
+from pathlib import Path
+import numpy as np
 
 logger = logging.getLogger('kgrag')
-file_path = "/mnt/home/liangdongqi/KGRag/config.yaml"
+
+script_path = Path(__file__).resolve()
+project_path = script_path.parent.parent
+
+file_path = project_path / "config.yaml"
+
+
+class UnlimitedSemaphore:
+    """A context manager that allows unlimited access."""
+
+    async def __aenter__(self):
+        pass
+
+    async def __aexit__(self, exc_type, exc, tb):
+        pass
+
+
+@dataclass
+class EmbeddingFunc:
+    embedding_dim: int
+    max_token_size: int
+    func: callable
+    concurrent_limit: int = 16
+
+    def __post_init__(self):
+        if self.concurrent_limit != 0:
+            self._semaphore = asyncio.Semaphore(self.concurrent_limit)
+        else:
+            self._semaphore = UnlimitedSemaphore()
+
+    async def __call__(self, *args, **kwargs) -> np.ndarray:
+        async with self._semaphore:
+            return await self.func(*args, **kwargs)
 
 
 def read_config():
@@ -36,9 +72,9 @@ def safe_unicode_decode(content):
 
     return decoded_content
 
+
 def compute_mdhash_id(content, prefix: str = ""):
     return prefix + md5(content.encode()).hexdigest()
-
 
 
 def load_json(file_name):

@@ -2,17 +2,18 @@ import asyncio
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal
 from pathlib import Path
+from typing import Literal
 import pandas as pd
-
+from kg import Neo4JStorage
 from llm import silcon_compelete, siliconcloud_embedding
-from prompt import prompts
-from storage import JsonKVStorage
-from utils import logger, read_config, compute_mdhash_id
+from storage import JsonKVStorage, NanoVectorDBStorage
+from utils import logger, compute_mdhash_id
 
 script_path = Path(__file__).resolve()
 project_path = script_path.parent.parent
+
+
 def always_get_an_event_loop() -> asyncio.AbstractEventLoop:
     """
     Ensure that there is always an event loop available.
@@ -48,9 +49,8 @@ class KGrag:
     embedding: callable = siliconcloud_embedding
     kv_storage = JsonKVStorage
     # corpus: json = {}
-    # graph_storage = Neo4JStorage
-    # vector_storage = NanoVectorDBStorage
-    # dataset: type[pd.DataFrame] = field(default_factory=pd.DataFrame())
+    graph_storage = Neo4JStorage
+    vector_storage = NanoVectorDBStorage
     corpus: Literal["2wiki", "hotpotqa", "musique"] = "2wiki"
 
     def __post_init__(self):
@@ -63,23 +63,23 @@ class KGrag:
         self.dataset = None
         if self.corpus == "2wiki":
             self.dataset = pd.read_json(
-                project_path/"data"/"2wiki_corpus.json"
+                project_path / "data" / "2wiki_corpus.json"
             )
         if self.corpus == "hotpotqa":
             self.dataset = pd.read_json(
-                 project_path/"data"/"hotpotqa_corpus.json"
+                project_path / "data" / "hotpotqa_corpus.json"
             )
         if self.corpus == "musique":
             self.dataset = pd.read_json(
-                 project_path/"data"/"misque_corpus.json"
+                project_path / "data" / "misque_corpus.json"
             )
         self.insert()
 
     def insert(self):
         loop = always_get_an_event_loop()
-        return loop.run_until_complete(self.ainsert())
+        return loop.run_until_complete(self._ainsert())
 
-    async def ainsert(self):
+    async def _ainsert(self):
         try:
             if self.dataset is None:
                 logger.error("corpus is None")
@@ -104,19 +104,6 @@ class KGrag:
             await self.chunk_cache.upsert(inserting_chunks)
         finally:
             await self._insert_done()
-
-    async def entity_extraction(self, text) -> list[str]:
-        config = read_config()
-        open_ai_config = config.get("openai")
-        api_key = open_ai_config.get("api_key")
-        base_url = open_ai_config.get("base_url")
-        entities = await self.llm(
-            prompt=text,
-            system_prompt=prompts["keywords_extraction"],
-            api_key=api_key,
-            base_url=base_url,
-        )
-        return entities.split(",")
 
     async def _insert_done(self):
         tasks = []
