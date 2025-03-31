@@ -30,6 +30,7 @@ async def extract_entities(
         llm_func: callable,
 ):
     ordered_chunks = list(chucks.items())
+    ordered_chunks = ordered_chunks[:5]
     already_processed = 0
     already_entities = 0
     already_relations = 0
@@ -40,16 +41,23 @@ async def extract_entities(
         chunk_dp = chunk_key_dp[1]
         content = chunk_dp['content']
 
-        entities = await llm_func(
+        entities:str = await llm_func(
             prompt=content,
             system_prompt=prompts["keywords_extraction"],
         )
+        es = entities.split(',')
 
-        triples = await llm_func(
+        triples:str = await llm_func(
             prompt=entities,
-            system_prompt=prompts["triples_extraction"],
+            system_prompt=prompts["triples_extraction"].format(content = content),
         )
-        pass
+        ts = triples.split('\n')
+        chunk_entity = {
+            chunk_key: es
+        }
+        await chunk_entity_jdb.upsert(chunk_entity)
+
+
 
     results = []
     for result in tqdm_async(
@@ -66,12 +74,12 @@ async def main():
     df = pd.read_json(data_folder)
     chunks = {}
 
-    for idx, row in df.iterrows():
-        chunk_key = str(idx)  # You can customize how you generate chunk keys
-        chunks[chunk_key] = {
-            "title": row["title"],
-            "content": row["content"],
-            "full_doc_id": row["full_doc_id"],
+    for index, value in df.items():
+          # You can customize how you generate chunk keys
+        chunks[str(index)] = {
+            "title": value["title"],
+            "content": value["content"],
+            "full_doc_id": value["full_doc_id"],
         }
 
     await extract_entities(chunks, None, None, None, None, silcon_compelete)

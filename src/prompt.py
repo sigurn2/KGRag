@@ -56,6 +56,6 @@ Microsoft (partnered_with) Dell
 Dell (distributed) Windows 11
 Your Task:
 Generate triples for the following passage and entities:
-Passage: "Insert your text here."
-Entities: "List of entities here."
+Passage: "{content}"
+Entities:
 '''
