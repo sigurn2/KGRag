@@ -1,6 +1,7 @@
 import inspect
 from dataclasses import dataclass
 from typing import Any, Union, Tuple, List, Dict
+import asyncio
 
 from neo4j import (
     AsyncGraphDatabase,
@@ -25,12 +26,7 @@ class Neo4JStorage:
     def load_nx_graph(file_name):
         print("no preloading of graph with neo4j in production")
 
-    def __init__(self, namespace, global_config, embedding_func):
-        super().__init__(
-            namespace=namespace,
-            global_config=global_config,
-            embedding_func=embedding_func,
-        )
+    def __init__(self, namespace, global_config):
         self._driver = None
         self._driver_lock = asyncio.Lock()
         neo4j_config = config.get('neo4j')
@@ -313,9 +309,8 @@ async def main():
     # 假设的全局配置
     global_config = {}
     # 假设的嵌入函数
-    embedding_func = lambda x: x
     namespace = "test_namespace"
-    storage = Neo4JStorage(namespace, global_config, embedding_func)
+    storage = Neo4JStorage(namespace, global_config)
     try:
         is_connected = await storage.check_connection()
         if is_connected:

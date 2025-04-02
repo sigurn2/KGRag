@@ -2,12 +2,15 @@ import asyncio
 import json
 from typing import TypedDict
 from base import BaseVectorStorage, BaseKVStorage
+from kg import Neo4JStorage
 from prompt import prompts
 from pathlib import Path
 import pandas as pd
 from llm import silcon_compelete
 from tqdm.asyncio import tqdm_asyncio as tqdm_async
 import re
+from utils import compute_mdhash_id
+
 script_path = Path(__file__).resolve()
 project_path = script_path.parent.parent
 
@@ -23,7 +26,7 @@ TextChunkSchema = TypedDict(
 
 async def extract_entities(
         chucks: dict[str, TextChunkSchema],
-        knowledge_graph_inst,
+        knowledge_graph_inst: Neo4JStorage ,
         chunk_entity_jdb: BaseKVStorage,
         entity_vdb: BaseVectorStorage,
         relation_vdb: BaseVectorStorage,
@@ -52,13 +55,33 @@ async def extract_entities(
             system_prompt=prompts["triples_extraction"].format(content = content),
         )
         ts = triples.split('\n')
+        rs = []
         for t in ts:
             match = re.match(r'(.*) <([^>]+)> (.*)', t)
             if match:
                 head = match.group(1).strip()
                 relation = match.group(2).strip()
                 tail = match.group(3).strip()
-            
+                rs.append(relation)
+                head_id = compute_mdhash_id(head,prefix='ent-')
+                # rel_id = compute_mdhash_id(relation,prefix='rel-')
+                tail_id = compute_mdhash_id(tail,prefix='ent-')
+                head_node = {
+                    'content': head,
+                    'chunk_key':chunk_key,
+                    'full_doc': content
+                }
+                tail_node = {
+                    'content': tail,
+                    'chunk_key':chunk_key,
+                    'full_doc': content
+                }
+                rel = {
+                    'content': relation,
+                }
+                await knowledge_graph_inst.upsert_node(head_id, head_node)
+                await knowledge_graph_inst.upsert_node(tail_id, tail_node)
+                await knowledge_graph_inst.upsert_edge(head_id, tail_id, rel)
         chunk_entity = {
             chunk_key: es
         }
@@ -89,7 +112,22 @@ async def main():
             "full_doc_id": value["full_doc_id"],
         }
 
-    await extract_entities(chunks, None, None, None, None, silcon_compelete)
+    # 假设的全局配置
+    global_config = {}
+    # 假设的嵌入函数
+    namespace = "test_namespace"
+    storage = Neo4JStorage(namespace, global_config)
+    try:
+        is_connected = await storage.check_connection()
+        if is_connected:
+            print("成功连接到 Neo4j 数据库。")
+            await extract_entities(chunks, storage, None, None, None, silcon_compelete)
+        else:
+            print("无法连接到 Neo4j 数据库。")
+            
+    finally:
+        await storage.close()
+
 
 
 if __name__ == '__main__':
