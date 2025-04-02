@@ -172,4 +172,4 @@ cython_debug/
 
 
 # config
-config.yaml
+**/config.yaml

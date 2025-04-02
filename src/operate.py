@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 from llm import silcon_compelete
 from tqdm.asyncio import tqdm_asyncio as tqdm_async
-
+import re
 script_path = Path(__file__).resolve()
 project_path = script_path.parent.parent
 
@@ -52,6 +52,13 @@ async def extract_entities(
             system_prompt=prompts["triples_extraction"].format(content = content),
         )
         ts = triples.split('\n')
+        for t in ts:
+            match = re.match(r'(.*) <([^>]+)> (.*)', t)
+            if match:
+                head = match.group(1).strip()
+                relation = match.group(2).strip()
+                tail = match.group(3).strip()
+            
         chunk_entity = {
             chunk_key: es
         }

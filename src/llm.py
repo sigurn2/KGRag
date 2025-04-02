@@ -73,7 +73,7 @@ async def silcon_compelete(
 ) -> str:
     keyword_extraction = kwargs.pop("keyword_extraction", None)
     result = await openai_complete_if_cache(
-        model="Qwen/Qwen2.5-7B-Instruct",
+        model=read_config().get("openai").get("model"),
         prompt=prompt,
         system_prompt=system_prompt,
         history_messages=history_messages,
@@ -129,13 +129,8 @@ async def siliconcloud_embedding(
 
 
 async def main():
-    config = read_config()
-    open_ai_config = config.get("openai")
-    api_key = open_ai_config.get("api_key")
-    base_url = open_ai_config.get("base_url")
-    texts = ["这是一个测试文本"]
-    result = await siliconcloud_embedding(texts, api_key=api_key)
-    print(result)
+    r = await silcon_compelete('nihao')
+    print(r)
 
 
 if __name__ == "__main__":
