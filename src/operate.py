@@ -64,7 +64,7 @@ async def extract_entities(
                 tail = match.group(3).strip()
                 rs.append(relation)
                 head_id = compute_mdhash_id(head,prefix='ent-')
-                # rel_id = compute_mdhash_id(relation,prefix='rel-')
+                rel_id = compute_mdhash_id(relation,prefix='rel-')
                 tail_id = compute_mdhash_id(tail,prefix='ent-')
                 head_node = {
                     'content': head,
@@ -79,6 +79,15 @@ async def extract_entities(
                 rel = {
                     'content': relation,
                 }
+                await entity_vdb.upsert({
+                    head_id: head_node,
+                })
+                await entity_vdb.upsert({
+                    tail_id: tail_node,
+                })
+                await relation_vdb.upsert({
+                   rel_id: rel
+                })
                 await knowledge_graph_inst.upsert_node(head_id, head_node)
                 await knowledge_graph_inst.upsert_node(tail_id, tail_node)
                 await knowledge_graph_inst.upsert_edge(head_id, tail_id, rel)
